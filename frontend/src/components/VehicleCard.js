@@ -1,0 +1,72 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import './VehicleCard.css';
+import { getImageUrl } from '../utils/api';
+
+const VehicleCard = ({ vehicle }) => {
+  const navigate = useNavigate();
+  const formatPrice = (price) => {
+    if (price >= 1000000) {
+      return `Rs: ${(price / 1000000).toFixed(2)}M`;
+    } else if (price >= 1000) {
+      return `Rs: ${(price / 1000).toFixed(0)}K`;
+    }
+    return `Rs: ${new Intl.NumberFormat('en-US').format(price)}`;
+  };
+
+  const formatMileage = (mileage) => {
+    return new Intl.NumberFormat('en-US').format(mileage);
+  };
+
+  const handleClick = () => {
+    navigate(`/vehicle/${vehicle.id || vehicle._id}`);
+  };
+
+  return (
+    <div className="vehicle-card" onClick={handleClick}>
+      <div className="vehicle-image-container">
+        {vehicle.images && vehicle.images.length > 0 ? (
+          <img
+            src={getImageUrl(vehicle.images[0])}
+            alt={vehicle.title}
+            className="vehicle-image"
+            onError={(e) => {
+              e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+            }}
+          />
+        ) : (
+          <div className="vehicle-image-placeholder">
+            <span>No Image Available</span>
+          </div>
+        )}
+      </div>
+      
+      <div className="vehicle-info">
+        <h3 className="vehicle-title">{vehicle.make} {vehicle.model} {vehicle.year}</h3>
+        
+        <div className="vehicle-price-row">
+          <span className="vehicle-price">{formatPrice(vehicle.price)}</span>
+          {vehicle.price === 0 && <span className="negotiable-badge">Negotiable</span>}
+        </div>
+        
+        <div className="vehicle-meta">
+          {vehicle.mileage > 0 && (
+            <span className="meta-item">
+              <span className="meta-icon">📍</span>
+              <span className="meta-text">meter {formatMileage(vehicle.mileage)} km</span>
+            </span>
+          )}
+          {vehicle.color && (
+            <span className="meta-item">
+              <span className="meta-icon">🎨</span>
+              <span className="meta-text">{vehicle.color}</span>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VehicleCard;
+
