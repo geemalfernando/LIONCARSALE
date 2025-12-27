@@ -151,7 +151,7 @@ cd "/Users/geemalfernando/Documents/projects/LIon car sale"
 git init  # if not already a git repo
 git add .
 git commit -m "Ready for deployment"
-git remote add origin https://github.com/yourusername/your-repo.git
+git remote add origin https://github.com/geemalfernando/LIONCARSALE
 git push -u origin main
 ```
 
