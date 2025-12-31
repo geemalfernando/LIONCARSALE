@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import './VehicleForm.css';
-import { getUploadUrl, getImageUrl } from '../utils/api';
 
 const VehicleForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -68,7 +67,7 @@ const VehicleForm = ({ onSubmit }) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(getUploadUrl(), {
+      const response = await fetch('http://localhost:5001/api/upload/single', {
         method: 'POST',
         body: formData
       });
@@ -78,7 +77,7 @@ const VehicleForm = ({ onSubmit }) => {
       }
 
       const data = await response.json();
-      const imageUrl = getImageUrl(data.url);
+      const imageUrl = `http://localhost:5001${data.url}`;
       
       handleImageChange(index, imageUrl);
       setUploadProgress(prev => ({ ...prev, [index]: 'Uploaded ✓' }));

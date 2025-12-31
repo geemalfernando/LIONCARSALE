@@ -159,6 +159,8 @@ git push -u origin main
 
 ## Step 3: Deploy Backend
 
+**⚠️ Important:** Firebase Hosting is **ONLY for frontend** (static files). For your Express.js/GraphQL backend, you need a different service.
+
 Choose **ONE** of these options (all FREE, NO CARD):
 
 ### Option A: Cyclic.sh (Recommended - Easiest)
@@ -204,13 +206,16 @@ Choose **ONE** of these options (all FREE, NO CARD):
 
 **✅ Save your backend URL - you'll need it for frontend!**
 
-### Option B: Fly.io (Alternative)
+### Option B: Fly.io (Alternative - More Complex)
 
-**✅ NO CARD REQUIRED | ✅ Free Tier Available**
+**⚠️ Note:** Fly.io may try to set up a managed PostgreSQL database (which requires payment). Since you already have Supabase, you should **skip the database option** when prompted.
+
+**✅ NO CARD REQUIRED | ✅ Free Tier Available** (but requires skipping database setup)
 
 1. **Install Fly CLI:**
    ```bash
    curl -L https://fly.io/install.sh | sh
+   source ~/.zshrc  # or open new terminal
    ```
 
 2. **Sign Up:**
@@ -218,13 +223,14 @@ Choose **ONE** of these options (all FREE, NO CARD):
    fly auth signup
    ```
 
-3. **Deploy:**
+3. **Deploy (Important - Skip Database):**
    ```bash
    cd backend
-   fly launch
+   fly launch --no-deploy
    ```
-   - Answer prompts (use defaults)
-   - Don't deploy a database (you already have one)
+   - When asked about Postgres, choose **"No"** (you already have Supabase)
+   - Answer other prompts (use defaults for region, app name, etc.)
+   - **Important:** Say "No" when asked if you want to create a Postgres database
 
 4. **Set Environment Variables:**
    ```bash

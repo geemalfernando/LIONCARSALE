@@ -48,11 +48,10 @@ lsof -ti:5001 | xargs kill -9
 lsof -ti:3000 | xargs kill -9
 ```
 
-### Database Connection Error
+### MongoDB Connection Error
 - Check your `.env` file in the `backend` folder
-- Verify PostgreSQL connection string (DATABASE_URL) is correct
-- Ensure database is running and accessible
-- See `POSTGRESQL_SETUP.md` for database setup help
+- Verify MongoDB connection string is correct
+- Ensure MongoDB Atlas IP whitelist includes your IP
 
 ### Dependencies Not Installed
 ```bash
@@ -67,6 +66,6 @@ npm install
 
 ## Next Steps
 
-- See `HOSTING.md` for complete production deployment guide (FREE, NO CARD REQUIRED)
-- See `POSTGRESQL_SETUP.md` for database setup instructions
+- See `HOSTING_GUIDE.md` for production deployment
+- See `QUICK_DEPLOY.md` for quick deployment steps
 

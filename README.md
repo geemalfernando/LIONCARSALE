@@ -263,23 +263,28 @@ npm start
 
 This application can be hosted **100% FREE** with your own custom domain - **NO CREDIT CARD NEEDED!**
 
-### 📖 Complete Hosting Guide
-See **[HOSTING.md](./HOSTING.md)** for a complete step-by-step guide to host your application from scratch.
+### ✅ NO CARD REQUIRED Guide
+See **[NO_CARD_HOSTING.md](./NO_CARD_HOSTING.md)** for services that don't require credit cards.
 
-The guide covers:
-- ✅ Database setup (Supabase, Neon.tech - FREE, NO CARD)
-- ✅ Backend deployment (Cyclic.sh, Fly.io - FREE, NO CARD)
-- ✅ Frontend deployment (Vercel, Netlify, Firebase - FREE, NO CARD)
-- ✅ Custom domain setup
-- ✅ Environment variables configuration
-- ✅ Troubleshooting tips
+### Quick Start
+See **[QUICK_FREE_HOSTING.md](./QUICK_FREE_HOSTING.md)** for a 5-minute setup guide (updated with NO CARD options).
+
+### Detailed Guide
+See **[FREE_HOSTING_GUIDE.md](./FREE_HOSTING_GUIDE.md)** for complete step-by-step instructions (all NO CARD options marked).
+
+### Deployment Checklist
+Use **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** to ensure everything is set up correctly.
 
 ### Recommended Free Setup (NO CARD):
-- **Frontend**: Vercel or Netlify (100% Free, NO CARD)
+- **Frontend**: Firebase Hosting, Vercel, or Netlify (100% Free, NO CARD)
 - **Backend**: Cyclic.sh or Fly.io (100% Free, NO CARD)
 - **Database**: Supabase or Neon.tech (100% Free, NO CARD)
 - **Total Cost**: **$0/month** (only domain ~$10/year)
 - **Card Required**: ❌ **NO**
+
+### Firebase Hosting (Quick Deploy)
+See **[FIREBASE_HOSTING.md](./FIREBASE_HOSTING.md)** for Firebase hosting setup.
+**Quick deploy**: `./deploy-firebase.sh` or `firebase deploy --only hosting`
 
 All platforms provide:
 - ✅ Free SSL/HTTPS certificates

@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 import './PhotoGallery.css';
-import { getImageUrl } from '../utils/api';
 
 const PhotoGallery = ({ images, title }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Helper function to get full image URL
+  const getImageUrl = (image) => {
+    if (!image) return '';
+    // If it's already a full URL (http/https), return as is
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image;
+    }
+    // If it's a local path starting with /uploads, prepend backend URL
+    if (image.startsWith('/uploads')) {
+      return `http://localhost:5001${image}`;
+    }
+    // Otherwise return as is
+    return image;
+  };
 
   if (!images || images.length === 0) {
     return (

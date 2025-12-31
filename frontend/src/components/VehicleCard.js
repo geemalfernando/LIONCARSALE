@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './VehicleCard.css';
-import { getImageUrl } from '../utils/api';
 
 const VehicleCard = ({ vehicle }) => {
   const navigate = useNavigate();
@@ -27,7 +26,7 @@ const VehicleCard = ({ vehicle }) => {
       <div className="vehicle-image-container">
         {vehicle.images && vehicle.images.length > 0 ? (
           <img
-            src={getImageUrl(vehicle.images[0])}
+            src={vehicle.images[0].startsWith('http') ? vehicle.images[0] : `http://localhost:5001${vehicle.images[0]}`}
             alt={vehicle.title}
             className="vehicle-image"
             onError={(e) => {
