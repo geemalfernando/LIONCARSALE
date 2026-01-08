@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import VehicleCard from '../components/VehicleCard';
 import FilterSidebar from '../components/FilterSidebar';
 import { vehiclesAPI } from '../utils/api';
@@ -43,11 +44,18 @@ function Home() {
       setLoading(true);
       try {
         const filter = {};
-        if (filters.search) filter.search = filters.search;
-        if (filters.year) filter.year = parseInt(filters.year);
-        if (filters.make) filter.make = filters.make;
-        if (filters.minYear) filter.minYear = parseInt(filters.minYear);
-        if (filters.maxYear) filter.maxYear = parseInt(filters.maxYear);
+        if (filters.search && filters.search.trim()) filter.search = filters.search.trim();
+        if (filters.make && filters.make.trim()) filter.make = filters.make.trim();
+        
+        // Handle year filters - prioritize range over exact
+        if (filters.minYear || filters.maxYear) {
+          // Year range takes priority
+          if (filters.minYear) filter.minYear = parseInt(filters.minYear);
+          if (filters.maxYear) filter.maxYear = parseInt(filters.maxYear);
+        } else if (filters.year && filters.year.trim()) {
+          // Exact year only if no range specified
+          filter.year = parseInt(filters.year);
+        }
 
         let vehicles = await vehiclesAPI.getAll(filter);
         
@@ -114,6 +122,15 @@ function Home() {
 
   return (
     <div className="home-container">
+      <Helmet>
+        <title>Lion Car Sale - Buy & Sell Vehicles in Sri Lanka | Used Cars for Sale</title>
+        <meta name="description" content={`Browse ${filteredVehicles.length} vehicles for sale in Sri Lanka. Find used cars, bikes, and vehicles. Search by make, model, year, and price. ${filters.make ? filters.make + ' ' : ''}${filters.year ? filters.year + ' ' : ''}vehicles available.`} />
+        <meta name="keywords" content="lion car sale, car sale sri lanka, used cars sri lanka, vehicles for sale sri lanka, buy car sri lanka, sell car sri lanka, {filters.make}, {filters.year}, second hand cars Sri Lanka, vehicle sale, car market Sri Lanka" />
+        <meta property="og:title" content="Lion Car Sale - Buy & Sell Vehicles in Sri Lanka" />
+        <meta property="og:description" content={`Find ${filteredVehicles.length} vehicles for sale in Sri Lanka. Browse used cars and vehicles from trusted sellers.`} />
+        <link rel="canonical" href="https://auditra-web.web.app/" />
+      </Helmet>
+      
       <FilterSidebar
         filters={filters}
         makes={makes}

@@ -89,18 +89,20 @@ vehicleSchema.statics.findAll = async function(filters = {}) {
   try {
     const query = {};
 
-    // Search by title (text search)
-    if (filters.search) {
-      query.$text = { $search: filters.search };
+    // Search by title, make, or model (case-insensitive)
+    if (filters.search && filters.search.trim()) {
+      const searchRegex = new RegExp(filters.search.trim(), 'i');
+      query.$or = [
+        { title: searchRegex },
+        { make: searchRegex },
+        { model: searchRegex },
+        { description: searchRegex }
+      ];
     }
 
-    // Filter by exact year
-    if (filters.year) {
-      query.year = parseInt(filters.year);
-    }
-
-    // Filter by year range
+    // Filter by year - prioritize year range over exact year
     if (filters.minYear || filters.maxYear) {
+      // Year range takes priority
       query.year = {};
       if (filters.minYear) {
         query.year.$gte = parseInt(filters.minYear);
@@ -108,6 +110,9 @@ vehicleSchema.statics.findAll = async function(filters = {}) {
       if (filters.maxYear) {
         query.year.$lte = parseInt(filters.maxYear);
       }
+    } else if (filters.year) {
+      // Exact year filter (only if no year range)
+      query.year = parseInt(filters.year);
     }
 
     // Filter by make (case-insensitive)
@@ -117,13 +122,8 @@ vehicleSchema.statics.findAll = async function(filters = {}) {
 
     let vehiclesQuery = this.find(query);
 
-    // Sort by creation date descending
+    // Sort by creation date descending (default)
     vehiclesQuery = vehiclesQuery.sort({ createdAt: -1 });
-
-    // If text search, sort by text score
-    if (filters.search) {
-      vehiclesQuery = vehiclesQuery.sort({ score: { $meta: 'textScore' } });
-    }
 
     const vehicles = await vehiclesQuery.exec();
     return vehicles.map(v => {

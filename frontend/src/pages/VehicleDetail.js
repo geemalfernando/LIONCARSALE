@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router-dom';
 import { vehiclesAPI } from '../utils/api';
 import PhotoGallery from '../components/PhotoGallery';
@@ -30,14 +31,6 @@ function VehicleDetail() {
     }
   }, [id]);
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
-    }).format(price);
-  };
-
   const formatMileage = (mileage) => {
     return new Intl.NumberFormat('en-US').format(mileage);
   };
@@ -63,8 +56,67 @@ function VehicleDetail() {
     );
   }
 
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0
+    }).format(price);
+  };
+
+  const pageTitle = vehicle ? `${vehicle.title} - ${vehicle.year} ${vehicle.make} ${vehicle.model} | Lion Car Sale Sri Lanka` : 'Vehicle Details | Lion Car Sale';
+  const pageDescription = vehicle 
+    ? `Buy ${vehicle.year} ${vehicle.make} ${vehicle.model} in Sri Lanka. Price: ${formatPrice(vehicle.price)}. ${vehicle.description || 'View full details, photos, and contact seller.'}` 
+    : 'View vehicle details on Lion Car Sale';
+
   return (
     <div className="vehicle-detail-container">
+      {vehicle && (
+        <Helmet>
+          <title>{pageTitle}</title>
+          <meta name="description" content={pageDescription} />
+          <meta name="keywords" content={`${vehicle.make}, ${vehicle.model}, ${vehicle.year}, car sale sri lanka, used car, vehicle for sale, ${vehicle.make} ${vehicle.model} sri lanka, buy ${vehicle.make}`} />
+          <meta property="og:title" content={`${vehicle.title} - Lion Car Sale Sri Lanka`} />
+          <meta property="og:description" content={pageDescription} />
+          <meta property="og:image" content={vehicle.images && vehicle.images[0] ? vehicle.images[0] : 'https://auditra-web.web.app/logo.jpg'} />
+          <meta property="og:type" content="product" />
+          <script type="application/ld+json">
+            {JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Vehicle",
+              "name": vehicle.title,
+              "description": vehicle.description || `${vehicle.year} ${vehicle.make} ${vehicle.model} for sale in Sri Lanka`,
+              "image": vehicle.images && vehicle.images.length > 0 ? vehicle.images : [],
+              "brand": {
+                "@type": "Brand",
+                "name": vehicle.make
+              },
+              "model": vehicle.model,
+              "productionDate": vehicle.year,
+              "color": vehicle.color || undefined,
+              "mileageFromOdometer": vehicle.mileage ? {
+                "@type": "QuantitativeValue",
+                "value": vehicle.mileage,
+                "unitCode": "MIL"
+              } : undefined,
+              "offers": {
+                "@type": "Offer",
+                "price": vehicle.price,
+                "priceCurrency": "USD",
+                "availability": "https://schema.org/InStock",
+                "seller": {
+                  "@type": "Organization",
+                  "name": "Lion Car Sale"
+                }
+              },
+              "vehicleIdentificationNumber": vehicle.id,
+              "itemCondition": "https://schema.org/UsedCondition"
+            })}
+          </script>
+          <link rel="canonical" href={`https://auditra-web.web.app/vehicle/${vehicle.id}`} />
+        </Helmet>
+      )}
+      
       <button onClick={() => navigate('/')} className="back-btn">
         ← Back to Vehicles
       </button>

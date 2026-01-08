@@ -53,15 +53,14 @@ router.get('/', async (req, res) => {
       filter.make = req.query.make;
     }
     
-    // Filter by year
-    if (req.query.year) {
-      filter.year = parseInt(req.query.year);
-    }
-    
-    // Filter by year range
+    // Filter by year - prioritize year range over exact year
     if (req.query.minYear || req.query.maxYear) {
-      filter.minYear = req.query.minYear ? parseInt(req.query.minYear) : undefined;
-      filter.maxYear = req.query.maxYear ? parseInt(req.query.maxYear) : undefined;
+      // Year range takes priority
+      if (req.query.minYear) filter.minYear = parseInt(req.query.minYear);
+      if (req.query.maxYear) filter.maxYear = parseInt(req.query.maxYear);
+    } else if (req.query.year) {
+      // Exact year only if no range specified
+      filter.year = parseInt(req.query.year);
     }
     
     const vehicles = await Vehicle.findAll(filter);
