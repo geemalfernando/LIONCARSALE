@@ -120,15 +120,26 @@ async function initializeDatabase() {
 }
 
 // REST API Routes - Direct MongoDB connection
+// Load vehicles router once (not on every request)
+let vehiclesRouter = null;
+
+function getVehiclesRouter() {
+  if (!vehiclesRouter) {
+    vehiclesRouter = require('../backend/routes/vehicles');
+  }
+  return vehiclesRouter;
+}
+
 app.use('/api/vehicles', async (req, res, next) => {
   try {
     // Initialize database if needed
     await initializeDatabase();
-    // Load and use vehicles router
-    const vehiclesRouter = require('../backend/routes/vehicles');
-    return vehiclesRouter(req, res, next);
+    // Use vehicles router
+    const router = getVehiclesRouter();
+    return router(req, res, next);
   } catch (error) {
     console.error('Vehicles route error:', error);
+    console.error('Stack:', error.stack);
     if (!res.headersSent) {
       res.status(500).json({
         status: 'ERROR',
