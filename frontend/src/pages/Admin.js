@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import VehicleForm from '../components/VehicleForm';
-import { graphqlRequest } from '../utils/graphql';
+import { vehiclesAPI } from '../utils/api';
 import './Admin.css';
 
 // Hardcoded admin credentials - CHANGE THIS PASSWORD
@@ -39,22 +39,9 @@ function Admin() {
       setSuccessMessage('');
       setErrorMessage('');
       
-      const mutation = `
-        mutation CreateVehicle($input: VehicleInput!) {
-          createVehicle(input: $input) {
-            id
-            title
-            make
-            model
-            year
-            price
-          }
-        }
-      `;
-
-      const data = await graphqlRequest(mutation, { input: vehicleData });
+      const vehicle = await vehiclesAPI.create(vehicleData);
       
-      setSuccessMessage(`Vehicle "${data.createVehicle.title}" added successfully!`);
+      setSuccessMessage(`Vehicle "${vehicle.title}" added successfully!`);
       
       // Clear form after 3 seconds
       setTimeout(() => {

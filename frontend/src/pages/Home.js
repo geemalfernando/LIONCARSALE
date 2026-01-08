@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import VehicleCard from '../components/VehicleCard';
 import FilterSidebar from '../components/FilterSidebar';
-import { graphqlRequest } from '../utils/graphql';
+import { vehiclesAPI } from '../utils/api';
 import './Home.css';
 
 function Home() {
@@ -37,7 +37,7 @@ function Home() {
     }
   };
 
-  // Fetch vehicles with filters using GraphQL
+  // Fetch vehicles with filters using REST API
   useEffect(() => {
     const fetchVehicles = async () => {
       setLoading(true);
@@ -49,29 +49,7 @@ function Home() {
         if (filters.minYear) filter.minYear = parseInt(filters.minYear);
         if (filters.maxYear) filter.maxYear = parseInt(filters.maxYear);
 
-        const query = `
-          query GetVehicles($filter: VehicleFilter) {
-            vehicles(filter: $filter) {
-              id
-              title
-              make
-              model
-              year
-              price
-              images
-              description
-              mileage
-              color
-              fuelType
-              transmission
-              createdAt
-            }
-          }
-        `;
-
-        const data = await graphqlRequest(query, { filter: Object.keys(filter).length > 0 ? filter : null });
-        // Convert id back to _id for compatibility
-        let vehicles = data.vehicles.map(v => ({ ...v, _id: v.id }));
+        let vehicles = await vehiclesAPI.getAll(filter);
         
         // Sort vehicles
         vehicles = sortVehicles(vehicles, sortBy);
@@ -87,20 +65,17 @@ function Home() {
     fetchVehicles();
   }, [filters, sortBy]);
 
-  // Fetch distinct makes and years for filters using GraphQL
+  // Fetch distinct makes and years for filters using REST API
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const query = `
-          query GetFilters {
-            makes
-            years
-          }
-        `;
-
-        const data = await graphqlRequest(query);
-        setMakes(data.makes);
-        setYears(data.years);
+        const [makesData, yearsData] = await Promise.all([
+          vehiclesAPI.getMakes(),
+          vehiclesAPI.getYears()
+        ]);
+        
+        setMakes(makesData);
+        setYears(yearsData);
       } catch (error) {
         console.error('Error fetching filter options:', error);
       }

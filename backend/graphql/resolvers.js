@@ -1,9 +1,26 @@
 const Vehicle = require('../models/Vehicle');
+const { mongoose, connectDatabase } = require('../config/database');
+
+// Helper function to ensure database is connected
+async function ensureConnected() {
+  if (mongoose.connection.readyState !== 1) {
+    console.log('⚠️  Database not connected, attempting to connect...');
+    try {
+      await connectDatabase();
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error('Database connection not ready');
+      }
+    } catch (error) {
+      throw new Error(`Database connection failed: ${error.message}`);
+    }
+  }
+}
 
 const resolvers = {
   Query: {
     vehicles: async (_, { filter }) => {
       try {
+        await ensureConnected();
         const vehicles = await Vehicle.findAll(filter || {});
         return vehicles;
       } catch (error) {
@@ -13,6 +30,7 @@ const resolvers = {
 
     vehicle: async (_, { id }) => {
       try {
+        await ensureConnected();
         const vehicle = await Vehicle.findById(id);
         if (!vehicle) {
           throw new Error('Vehicle not found');
@@ -25,6 +43,7 @@ const resolvers = {
 
     makes: async () => {
       try {
+        await ensureConnected();
         const makes = await Vehicle.getDistinctMakes();
         return makes;
       } catch (error) {
@@ -34,6 +53,7 @@ const resolvers = {
 
     years: async () => {
       try {
+        await ensureConnected();
         const years = await Vehicle.getDistinctYears();
         return years;
       } catch (error) {
@@ -45,6 +65,7 @@ const resolvers = {
   Mutation: {
     createVehicle: async (_, { input }) => {
       try {
+        await ensureConnected();
         const vehicle = await Vehicle.create(input);
         return vehicle;
       } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { graphqlRequest } from '../utils/graphql';
+import { vehiclesAPI } from '../utils/api';
 import PhotoGallery from '../components/PhotoGallery';
 import './VehicleDetail.css';
 
@@ -15,27 +15,8 @@ function VehicleDetail() {
     const fetchVehicle = async () => {
       try {
         setLoading(true);
-        const query = `
-          query GetVehicle($id: ID!) {
-            vehicle(id: $id) {
-              id
-              title
-              make
-              model
-              year
-              price
-              images
-              description
-              mileage
-              color
-              fuelType
-              transmission
-            }
-          }
-        `;
-
-        const data = await graphqlRequest(query, { id });
-        setVehicle(data.vehicle);
+        const vehicleData = await vehiclesAPI.getById(id);
+        setVehicle(vehicleData);
       } catch (err) {
         setError(err.message);
         console.error('Error fetching vehicle:', err);

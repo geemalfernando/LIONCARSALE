@@ -1,91 +1,172 @@
 const express = require('express');
 const router = express.Router();
 const Vehicle = require('../models/Vehicle');
+const { mongoose, connectDatabase } = require('../config/database');
 
-// GET all vehicles with filters and search
-router.get('/', async (req, res) => {
+// Helper function to ensure database is connected
+async function ensureConnected() {
+  // Check if already connected and verified
+  if (mongoose.connection.readyState === 1) {
+    try {
+      // Quick ping to verify connection is alive
+      await mongoose.connection.db.admin().ping();
+      return;
+    } catch (pingError) {
+      console.log('⚠️  Connection ping failed, reconnecting...');
+      mongoose.connection.readyState = 0; // Force reconnect
+    }
+  }
+  
+  // Not connected, attempt connection
+  console.log('⚠️  Database not connected, attempting to connect...');
   try {
-    const { search, year, make, minYear, maxYear } = req.query;
+    await connectDatabase();
     
-    // Build query object
-    const query = {};
-    
-    // Search by title (case-insensitive)
-    if (search) {
-      query.title = { $regex: search, $options: 'i' };
+    // Verify connection is ready
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Database connection not ready after connect');
     }
     
-    // Filter by exact year
-    if (year) {
-      query.year = parseInt(year);
+    // Verify with ping
+    await mongoose.connection.db.admin().ping();
+    console.log('✅ Database connection verified');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    throw new Error(`Database connection failed: ${error.message}`);
+  }
+}
+
+// GET /api/vehicles - Get all vehicles with optional filters
+router.get('/', async (req, res) => {
+  try {
+    await ensureConnected();
+    
+    const filter = {};
+    
+    // Search by title (matches model's $text search)
+    if (req.query.search) {
+      filter.search = req.query.search;
+    }
+    
+    // Filter by make
+    if (req.query.make) {
+      filter.make = req.query.make;
+    }
+    
+    // Filter by year
+    if (req.query.year) {
+      filter.year = parseInt(req.query.year);
     }
     
     // Filter by year range
-    if (minYear || maxYear) {
-      query.year = {};
-      if (minYear) {
-        query.year.$gte = parseInt(minYear);
-      }
-      if (maxYear) {
-        query.year.$lte = parseInt(maxYear);
-      }
+    if (req.query.minYear || req.query.maxYear) {
+      filter.minYear = req.query.minYear ? parseInt(req.query.minYear) : undefined;
+      filter.maxYear = req.query.maxYear ? parseInt(req.query.maxYear) : undefined;
     }
     
-    // Filter by make (case-insensitive)
-    if (make) {
-      query.make = { $regex: make, $options: 'i' };
-    }
+    const vehicles = await Vehicle.findAll(filter);
     
-    const vehicles = await Vehicle.find(query).sort({ createdAt: -1 });
-    res.json(vehicles);
+    res.json({
+      status: 'OK',
+      data: vehicles,
+      count: vehicles.length
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching vehicles:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message || 'Failed to fetch vehicles'
+    });
   }
 });
 
-// GET single vehicle by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const vehicle = await Vehicle.findById(req.params.id);
-    if (!vehicle) {
-      return res.status(404).json({ error: 'Vehicle not found' });
-    }
-    res.json(vehicle);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST create new vehicle
-router.post('/', async (req, res) => {
-  try {
-    const vehicle = new Vehicle(req.body);
-    await vehicle.save();
-    res.status(201).json(vehicle);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// GET distinct makes for filter dropdown
+// IMPORTANT: Specific routes must come before parameterized routes
+// GET /api/vehicles/filters/makes - Get distinct makes
 router.get('/filters/makes', async (req, res) => {
   try {
-    const makes = await Vehicle.distinct('make');
-    res.json(makes.sort());
+    await ensureConnected();
+    
+    const makes = await Vehicle.getDistinctMakes();
+    
+    res.json({
+      status: 'OK',
+      data: makes
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching makes:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message || 'Failed to fetch makes'
+    });
   }
 });
 
-// GET distinct years for filter dropdown
+// GET /api/vehicles/filters/years - Get distinct years
 router.get('/filters/years', async (req, res) => {
   try {
-    const years = await Vehicle.distinct('year');
-    res.json(years.sort((a, b) => b - a));
+    await ensureConnected();
+    
+    const years = await Vehicle.getDistinctYears();
+    
+    res.json({
+      status: 'OK',
+      data: years
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching years:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message || 'Failed to fetch years'
+    });
+  }
+});
+
+// POST /api/vehicles - Create new vehicle
+router.post('/', async (req, res) => {
+  try {
+    await ensureConnected();
+    
+    const vehicle = await Vehicle.create(req.body);
+    
+    res.status(201).json({
+      status: 'OK',
+      message: 'Vehicle created successfully',
+      data: vehicle
+    });
+  } catch (error) {
+    console.error('Error creating vehicle:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message || 'Failed to create vehicle'
+    });
+  }
+});
+
+// GET /api/vehicles/:id - Get single vehicle (must be last to not conflict with /filters/*)
+router.get('/:id', async (req, res) => {
+  try {
+    await ensureConnected();
+    
+    const vehicle = await Vehicle.findById(req.params.id);
+    
+    if (!vehicle) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Vehicle not found'
+      });
+    }
+    
+    res.json({
+      status: 'OK',
+      data: vehicle
+    });
+  } catch (error) {
+    console.error('Error fetching vehicle:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message || 'Failed to fetch vehicle'
+    });
   }
 });
 
 module.exports = router;
-

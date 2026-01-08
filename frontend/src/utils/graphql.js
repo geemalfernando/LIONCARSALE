@@ -1,9 +1,11 @@
 import axios from 'axios';
 
-// Use relative URL for production (same domain as Firebase Hosting)
-// Falls back to localhost for development
+// Use environment variable for backend URL
+// Defaults to Vercel backend in production, localhost in development
 const GRAPHQL_URL = process.env.REACT_APP_GRAPHQL_URL || 
-  (process.env.NODE_ENV === 'production' ? '/graphql' : 'http://localhost:5001/graphql');
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://lioncarsa.vercel.app/graphql' 
+    : 'http://localhost:5001/graphql');
 
 export const graphqlRequest = async (query, variables = {}) => {
   try {

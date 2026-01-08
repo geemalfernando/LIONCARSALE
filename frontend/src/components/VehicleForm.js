@@ -67,26 +67,11 @@ const VehicleForm = ({ onSubmit }) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      // For production, you'll need to implement image upload to Firebase Storage
-      // For now, we'll use a placeholder that alerts the user
-      if (process.env.NODE_ENV === 'production') {
-        alert('Image upload feature needs Firebase Storage integration. Using placeholder for now.');
-        // Return a placeholder URL - in production, integrate with Firebase Storage
-        const placeholderUrl = 'https://via.placeholder.com/800x600?text=Vehicle+Image';
-        handleImageChange(index, placeholderUrl);
-        setUploadProgress(prev => ({ ...prev, [index]: 'Placeholder' }));
-        setTimeout(() => {
-          setUploadProgress(prev => {
-            const newProgress = { ...prev };
-            delete newProgress[index];
-            return newProgress;
-          });
-        }, 2000);
-        return;
-      }
-
-      // Development: use local backend
-      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      // Use environment variable or default to Vercel backend in production
+      const backendUrl = process.env.REACT_APP_API_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://lioncarsa.vercel.app' 
+          : 'http://localhost:5001');
       const response = await fetch(`${backendUrl}/api/upload/single`, {
         method: 'POST',
         body: formData

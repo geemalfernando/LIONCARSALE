@@ -123,6 +123,11 @@ vehicleSchema.statics.findAll = async function(filters = {}) {
     const vehicles = await vehiclesQuery.exec();
     return vehicles.map(v => {
       const vehicle = v.toJSON();
+      // Convert _id to id for frontend compatibility
+      if (vehicle._id) {
+        vehicle.id = vehicle._id.toString();
+        delete vehicle._id;
+      }
       return vehicle;
     });
   } catch (error) {
@@ -136,7 +141,13 @@ vehicleSchema.statics.findById = async function(id) {
     if (!vehicle) {
       return null;
     }
-    return vehicle.toJSON();
+    const vehicleObj = vehicle.toJSON();
+    // Convert _id to id for frontend compatibility
+    if (vehicleObj._id) {
+      vehicleObj.id = vehicleObj._id.toString();
+      delete vehicleObj._id;
+    }
+    return vehicleObj;
   } catch (error) {
     throw new Error(`Error fetching vehicle: ${error.message}`);
   }
@@ -146,7 +157,13 @@ vehicleSchema.statics.create = async function(vehicleData) {
   try {
     const vehicle = new this(vehicleData);
     await vehicle.save();
-    return vehicle.toJSON();
+    const vehicleObj = vehicle.toJSON();
+    // Convert _id to id for frontend compatibility
+    if (vehicleObj._id) {
+      vehicleObj.id = vehicleObj._id.toString();
+      delete vehicleObj._id;
+    }
+    return vehicleObj;
   } catch (error) {
     throw new Error(`Error creating vehicle: ${error.message}`);
   }

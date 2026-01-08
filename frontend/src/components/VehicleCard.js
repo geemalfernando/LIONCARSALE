@@ -26,7 +26,12 @@ const VehicleCard = ({ vehicle }) => {
       <div className="vehicle-image-container">
         {vehicle.images && vehicle.images.length > 0 ? (
           <img
-            src={vehicle.images[0].startsWith('http') ? vehicle.images[0] : `http://localhost:5001${vehicle.images[0]}`}
+            src={vehicle.images[0].startsWith('http') 
+              ? vehicle.images[0] 
+              : `${process.env.REACT_APP_API_URL || 
+                   (process.env.NODE_ENV === 'production' 
+                     ? 'https://lioncarsa.vercel.app' 
+                     : 'http://localhost:5001')}${vehicle.images[0]}`}
             alt={vehicle.title}
             className="vehicle-image"
             onError={(e) => {
