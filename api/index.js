@@ -2,13 +2,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { ApolloServer } = require('apollo-server-express');
 
-const { initializeDatabase, mongoose } = require('../backend/config/database');
-const typeDefs = require('../backend/graphql/schema');
-const resolvers = require('../backend/graphql/resolvers');
-
-// Create Express app
+// Initialize Express app
 const app = express();
 
 // Middleware - CORS configuration
@@ -21,25 +16,39 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../backend/uploads')));
+// Simple health check (works immediately, no initialization needed)
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Lion Car Sale API is running',
+    database: 'MongoDB',
+    timestamp: new Date().toISOString()
+  });
+});
 
-// File upload routes
-app.use('/api/upload', require('../backend/routes/upload'));
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Lion Car Sale API Server',
+    endpoints: {
+      graphql: `${req.protocol}://${req.get('host')}/graphql`,
+      health: `${req.protocol}://${req.get('host')}/api/health`
+    }
+  });
+});
 
-// Apollo Server instance
+// Apollo Server and database initialization (lazy loaded)
 let apolloServer = null;
-let serverInitialized = false;
 let initializationPromise = null;
 
-// Initialize Apollo Server and database
-async function initializeServer() {
+async function initializeApolloServer() {
   // If already initialized, return
-  if (serverInitialized && apolloServer) {
-    return;
+  if (apolloServer) {
+    return apolloServer;
   }
 
-  // If initialization is in progress, wait for it
+  // If initialization in progress, wait
   if (initializationPromise) {
     return initializationPromise;
   }
@@ -47,110 +56,110 @@ async function initializeServer() {
   // Start initialization
   initializationPromise = (async () => {
     try {
-      console.log('🔌 Initializing server...');
+      console.log('🔌 Initializing Apollo Server and database...');
 
-      // Connect to database (non-blocking in serverless)
-      if (mongoose.connection.readyState !== 1) {
-        try {
+      // Import dependencies (lazy load)
+      const { ApolloServer } = require('apollo-server-express');
+      const { initializeDatabase, mongoose } = require('../backend/config/database');
+      const typeDefs = require('../backend/graphql/schema');
+      const resolvers = require('../backend/graphql/resolvers');
+
+      // Connect to database
+      try {
+        if (mongoose.connection.readyState !== 1) {
           await initializeDatabase();
           console.log('✅ MongoDB database ready');
-        } catch (dbError) {
-          console.error('⚠️  Database connection failed:', dbError.message);
-          // Continue without database - will retry on GraphQL queries
         }
+      } catch (dbError) {
+        console.error('⚠️  Database connection failed:', dbError.message);
+        // Continue - GraphQL queries will fail but API won't crash
       }
 
-      // Create Apollo Server if not exists
-      if (!apolloServer) {
-        apolloServer = new ApolloServer({
-          typeDefs,
-          resolvers,
-          introspection: true,
-          playground: true,
-          context: ({ req }) => {
-            return { req };
-          },
-        });
+      // Create and start Apollo Server
+      apolloServer = new ApolloServer({
+        typeDefs,
+        resolvers,
+        introspection: true,
+        playground: true,
+        context: ({ req }) => {
+          return { req };
+        },
+      });
 
-        await apolloServer.start();
-        apolloServer.applyMiddleware({ app, path: '/graphql' });
-        
-        console.log('✅ Apollo Server started');
-      }
+      await apolloServer.start();
+      apolloServer.applyMiddleware({ app, path: '/graphql' });
       
-      serverInitialized = true;
-      console.log('✅ Server initialization complete');
+      console.log('✅ Apollo Server started');
+      return apolloServer;
     } catch (err) {
-      console.error('❌ Server initialization error:', err.message);
-      console.error(err.stack);
-      serverInitialized = false;
+      console.error('❌ Apollo Server initialization error:', err.message);
+      console.error('Stack:', err.stack);
       initializationPromise = null;
-      // Don't throw - allow graceful error handling
+      throw err;
     }
   })();
 
   return initializationPromise;
 }
 
-// Health check
-app.get('/api/health', async (req, res) => {
+// GraphQL endpoint - lazy load Apollo Server
+app.all('/graphql', async (req, res, next) => {
   try {
-    await initializeServer();
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    
-    res.json({ 
-      status: 'OK', 
-      message: 'Lion Car Sale GraphQL API is running',
-      database: 'MongoDB',
-      databaseStatus: dbStatus,
-      graphql: `${req.protocol}://${req.get('host')}/graphql`
-    });
+    await initializeApolloServer();
+    // Use Apollo Server handler
+    return apolloServer.createHandler({ 
+      path: '/graphql',
+      disableHealthCheck: true,
+      bodyParserConfig: false
+    })(req, res);
   } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
-      message: 'Server initialization failed',
-      error: error.message
-    });
+    console.error('GraphQL initialization error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        status: 'ERROR',
+        message: 'GraphQL server not available',
+        error: error.message
+      });
+    }
   }
 });
 
-// Root route
-app.get('/', async (req, res) => {
+// File upload routes (lazy load)
+app.use('/api/upload', async (req, res, next) => {
   try {
-    await initializeServer();
-    res.json({ 
-      status: 'OK', 
-      message: 'Lion Car Sale API Server',
-      endpoints: {
-        graphql: `${req.protocol}://${req.get('host')}/graphql`,
-        health: `${req.protocol}://${req.get('host')}/api/health`
-      }
-    });
+    const uploadRouter = require('../backend/routes/upload');
+    return uploadRouter(req, res, next);
   } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
-      message: 'Server initialization failed',
-      error: error.message
-    });
+    console.error('Upload route error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        status: 'ERROR',
+        message: 'Upload service not available',
+        error: error.message
+      });
+    }
   }
 });
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../backend/uploads')));
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error('❌ Express error:', err);
-  res.status(err.status || 500).json({
-    status: 'ERROR',
-    message: err.message || 'Internal server error'
-  });
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      status: 'ERROR',
+      message: err.message || 'Internal server error',
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
 });
 
 // Vercel serverless function handler
 module.exports = async (req, res) => {
   try {
-    // Initialize server if not already done
-    await initializeServer();
-    
-    // Handle the request
+    // Handle the request with Express
     return app(req, res);
   } catch (error) {
     console.error('❌ Serverless function error:', error);
@@ -160,7 +169,7 @@ module.exports = async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({
         status: 'ERROR',
-        message: 'Server initialization failed',
+        message: 'Server error occurred',
         error: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
