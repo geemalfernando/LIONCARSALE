@@ -1,0 +1,20 @@
+{
+  "name": "lion-car-sale",
+  "version": "1.0.0",
+  "description": "Lion Car Sale - Full Stack Application",
+  "scripts": {
+    "install-backend": "cd backend && npm install",
+    "start-backend": "cd backend && npm start",
+    "start-frontend": "cd frontend && npm start"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^8.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "apollo-server-express": "^3.12.1",
+    "graphql": "^16.8.1",
+    "multer": "^1.4.5-lts.1"
+  }
+}
+
