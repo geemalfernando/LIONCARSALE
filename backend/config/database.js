@@ -24,29 +24,61 @@ function getDatabaseUrl() {
     return url;
   }
   
-  // If URL doesn't have database name, add it
-  // Check if database name is already in the path (after .net/)
-  const urlParts = url.match(/^(mongodb\+srv:\/\/[^/]+\/[^?]*)/);
-  const hasDatabase = urlParts && urlParts[1] && urlParts[1].split('/').length > 4;
+  // Parse the connection string to check if database name exists
+  // Format: mongodb+srv://user:pass@cluster.mongodb.net/database?params
+  // We need to check if there's a database name after the host and before the query string
   
-  if (!hasDatabase) {
-    // Extract query string if exists
-    const queryMatch = url.match(/\?(.+)$/);
-    const queryString = queryMatch ? '?' + queryMatch[1] : '';
-    const baseUrl = url.replace(/\?.*$/, '').replace(/\/$/, '');
+  try {
+    // Extract the part after @ (host and database)
+    const afterAt = url.split('@')[1];
+    if (!afterAt) {
+      // Malformed URL, return as is
+      return url;
+    }
     
-    // Add database name before query string
-    url = `${baseUrl}/lion_car_sale${queryString}`;
+    // Split by ? to separate path from query string
+    const [pathPart, queryPart] = afterAt.split('?');
+    
+    // Split path by / to get host and database
+    const pathParts = pathPart.split('/');
+    
+    // pathParts[0] = host (e.g., "cluster.mongodb.net")
+    // pathParts[1] = database name (if exists)
+    
+    let hasDatabase = false;
+    let databaseName = '';
+    
+    if (pathParts.length > 1 && pathParts[1] && pathParts[1].trim() !== '') {
+      hasDatabase = true;
+      databaseName = pathParts[1].trim();
+    }
+    
+    if (!hasDatabase) {
+      // No database name, add it
+      const host = pathParts[0];
+      const queryString = queryPart ? `?${queryPart}` : '';
+      // Build new URL with database name
+      const beforeAt = url.split('@')[0];
+      url = `${beforeAt}@${host}/lion_car_sale${queryString}`;
+      console.log('📝 Added database name to connection string');
+    } else {
+      // Database name exists, use it as is
+      console.log(`📝 Database name found in connection string: ${databaseName}`);
+    }
+    
+    // mongodb+srv:// URLs automatically use TLS, no need to add it explicitly
+    // Just ensure retryWrites and w are set if not present
+    if (!url.includes('retryWrites=')) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}retryWrites=true&w=majority`;
+    }
+    
+    return url;
+  } catch (error) {
+    console.error('⚠️  Error parsing DATABASE_URL, using as-is:', error.message);
+    // If parsing fails, return original URL
+    return url;
   }
-  
-  // mongodb+srv:// URLs automatically use TLS, no need to add it explicitly
-  // Just ensure retryWrites and w are set if not present
-  if (!url.includes('retryWrites=')) {
-    const separator = url.includes('?') ? '&' : '?';
-    url = `${url}${separator}retryWrites=true&w=majority`;
-  }
-  
-  return url;
 }
 
 // Connect to MongoDB
