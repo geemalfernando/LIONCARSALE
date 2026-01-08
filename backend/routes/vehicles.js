@@ -147,6 +147,38 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PATCH /api/vehicles/:id - Update vehicle (especially sold status)
+router.patch('/:id', async (req, res) => {
+  try {
+    await ensureConnected();
+    
+    const vehicle = await Vehicle.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+    
+    if (!vehicle) {
+      return res.status(404).json({
+        status: 'ERROR',
+        message: 'Vehicle not found'
+      });
+    }
+    
+    res.json({
+      status: 'OK',
+      message: 'Vehicle updated successfully',
+      data: vehicle
+    });
+  } catch (error) {
+    console.error('Error updating vehicle:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message || 'Failed to update vehicle'
+    });
+  }
+});
+
 // GET /api/vehicles/:id - Get single vehicle (must be last to not conflict with /filters/*)
 router.get('/:id', async (req, res) => {
   try {

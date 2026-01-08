@@ -134,7 +134,7 @@ function VehicleDetail() {
 
         <div className="vehicle-detail-content">
           <div className="vehicle-photos-section">
-            <PhotoGallery images={vehicle.images || []} title={vehicle.title} />
+            <PhotoGallery images={vehicle.images || []} title={vehicle.title} sold={vehicle.sold} />
           </div>
 
           <div className="vehicle-info-section">

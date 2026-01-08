@@ -294,6 +294,20 @@ app.use('/api/upload', async (req, res, next) => {
   }
 });
 
+// Sitemap route
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    await initializeDatabase();
+    const generateSitemap = require('../backend/routes/sitemap');
+    return generateSitemap(req, res);
+  } catch (error) {
+    console.error('Sitemap route error:', error);
+    if (!res.headersSent) {
+      res.status(500).send('Error generating sitemap');
+    }
+  }
+});
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../backend/uploads')));
 

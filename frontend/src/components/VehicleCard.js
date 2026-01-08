@@ -22,25 +22,37 @@ const VehicleCard = ({ vehicle }) => {
   };
 
   return (
-    <div className="vehicle-card" onClick={handleClick}>
+    <div className={`vehicle-card ${vehicle.sold ? 'sold-vehicle' : ''}`} onClick={handleClick}>
       <div className="vehicle-image-container">
         {vehicle.images && vehicle.images.length > 0 ? (
-          <img
-            src={vehicle.images[0].startsWith('http') 
-              ? vehicle.images[0] 
-              : `${process.env.REACT_APP_API_URL || 
-                   (process.env.NODE_ENV === 'production' 
-                     ? 'https://lioncarsa.vercel.app' 
-                     : 'http://localhost:5001')}${vehicle.images[0]}`}
-            alt={vehicle.title}
-            className="vehicle-image"
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
-            }}
-          />
+          <>
+            <img
+              src={vehicle.images[0].startsWith('http') 
+                ? vehicle.images[0] 
+                : `${process.env.REACT_APP_API_URL || 
+                     (process.env.NODE_ENV === 'production' 
+                       ? 'https://lioncarsa.vercel.app' 
+                       : 'http://localhost:5001')}${vehicle.images[0]}`}
+              alt={vehicle.title}
+              className={`vehicle-image ${vehicle.sold ? 'sold-image' : ''}`}
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+              }}
+            />
+            {vehicle.sold && (
+              <div className="sold-overlay">
+                <div className="sold-badge">SOLD</div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="vehicle-image-placeholder">
             <span>No Image Available</span>
+            {vehicle.sold && (
+              <div className="sold-overlay">
+                <div className="sold-badge">SOLD</div>
+              </div>
+            )}
           </div>
         )}
       </div>

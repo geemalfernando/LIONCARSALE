@@ -109,6 +109,22 @@ export const vehiclesAPI = {
       throw error;
     }
   },
+
+  // Update vehicle (e.g., mark as sold)
+  update: async (id, updates) => {
+    try {
+      const response = await api.patch(`/api/vehicles/${id}`, updates);
+      
+      if (response.data.status === 'OK') {
+        return { ...response.data.data, _id: response.data.data.id };
+      }
+      
+      throw new Error(response.data.message || 'Failed to update vehicle');
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

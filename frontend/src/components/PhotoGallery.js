@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './PhotoGallery.css';
 
-const PhotoGallery = ({ images, title }) => {
+const PhotoGallery = ({ images, title, sold }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Helper function to get full image URL
@@ -49,17 +49,22 @@ const PhotoGallery = ({ images, title }) => {
   };
 
   return (
-    <div className="photo-gallery">
+      <div className="photo-gallery">
       <div className="photo-gallery-main">
         <div className="main-photo-container">
           <img
             src={getImageUrl(images[selectedIndex])}
             alt={`${title} - Photo ${selectedIndex + 1}`}
-            className="main-photo"
+            className={`main-photo ${sold ? 'sold-image' : ''}`}
             onError={(e) => {
               e.target.src = 'https://via.placeholder.com/800x600?text=Image+Not+Available';
             }}
           />
+          {sold && (
+            <div className="sold-overlay-gallery">
+              <div className="sold-badge-gallery">SOLD</div>
+            </div>
+          )}
           {images.length > 1 && (
             <>
               <button

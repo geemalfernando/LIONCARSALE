@@ -63,6 +63,11 @@ const vehicleSchema = new mongoose.Schema({
     type: String,
     default: '',
     trim: true
+  },
+  sold: {
+    type: Boolean,
+    default: false,
+    index: true
   }
 }, {
   timestamps: true, // Automatically adds createdAt and updatedAt
@@ -122,8 +127,8 @@ vehicleSchema.statics.findAll = async function(filters = {}) {
 
     let vehiclesQuery = this.find(query);
 
-    // Sort by creation date descending (default)
-    vehiclesQuery = vehiclesQuery.sort({ createdAt: -1 });
+    // Sort: sold vehicles last (sold: 1 means false first, then true), then by creation date descending
+    vehiclesQuery = vehiclesQuery.sort({ sold: 1, createdAt: -1 });
 
     const vehicles = await vehiclesQuery.exec();
     return vehicles.map(v => {
