@@ -67,7 +67,27 @@ const VehicleForm = ({ onSubmit }) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('http://localhost:5001/api/upload/single', {
+      // For production, you'll need to implement image upload to Firebase Storage
+      // For now, we'll use a placeholder that alerts the user
+      if (process.env.NODE_ENV === 'production') {
+        alert('Image upload feature needs Firebase Storage integration. Using placeholder for now.');
+        // Return a placeholder URL - in production, integrate with Firebase Storage
+        const placeholderUrl = 'https://via.placeholder.com/800x600?text=Vehicle+Image';
+        handleImageChange(index, placeholderUrl);
+        setUploadProgress(prev => ({ ...prev, [index]: 'Placeholder' }));
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[index];
+            return newProgress;
+          });
+        }, 2000);
+        return;
+      }
+
+      // Development: use local backend
+      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const response = await fetch(`${backendUrl}/api/upload/single`, {
         method: 'POST',
         body: formData
       });
@@ -77,7 +97,7 @@ const VehicleForm = ({ onSubmit }) => {
       }
 
       const data = await response.json();
-      const imageUrl = `http://localhost:5001${data.url}`;
+      const imageUrl = `${backendUrl}${data.url}`;
       
       handleImageChange(index, imageUrl);
       setUploadProgress(prev => ({ ...prev, [index]: 'Uploaded ✓' }));

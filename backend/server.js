@@ -26,19 +26,23 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // File upload routes
 app.use('/api/upload', require('./routes/upload'));
 
-// PostgreSQL Connection and Initialization
+// MongoDB Connection and Initialization
 async function connectDatabase() {
   try {
     await initializeDatabase();
-    console.log('✅ PostgreSQL database ready');
+    console.log('✅ MongoDB database ready');
   } catch (err) {
-    console.error('❌ PostgreSQL connection error:', err.message);
+    console.error('❌ MongoDB connection error:', err.message);
     console.error('\nTroubleshooting tips:');
-    console.error('1. Check your DATABASE_URL connection string');
-    console.error('2. Ensure PostgreSQL server is running');
+    console.error('1. Check your DATABASE_URL connection string (MongoDB format)');
+    console.error('2. Ensure MongoDB server is running (or MongoDB Atlas is accessible)');
     console.error('3. Verify database credentials in .env file');
-    console.error('4. Check if database exists');
-    process.exit(1);
+    console.error('4. Check if your IP is whitelisted (for MongoDB Atlas)');
+    console.error('5. Format: mongodb://username:password@host:port/database or mongodb+srv://... for Atlas');
+    // Don't exit in production (Vercel)
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   }
 }
 
@@ -46,8 +50,8 @@ async function connectDatabase() {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  introspection: process.env.NODE_ENV !== 'production', // Disable in production
-  playground: process.env.NODE_ENV !== 'production', // Disable in production
+  introspection: true, // Enable for production
+  playground: true, // Enable for production
   context: ({ req }) => {
     return { req };
   },
@@ -67,18 +71,26 @@ async function startServer() {
     res.json({ 
       status: 'OK', 
       message: 'Lion Car Sale GraphQL API is running',
-      database: 'PostgreSQL',
-      graphql: `http://localhost:${PORT}${server.graphqlPath}`
+      database: 'MongoDB',
+      graphql: `${req.protocol}://${req.get('host')}${server.graphqlPath}`
     });
   });
 
-  const PORT = process.env.PORT || 5001;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`GraphQL endpoint: http://localhost:${PORT}${server.graphqlPath}`);
-    console.log(`GraphQL Playground: http://localhost:${PORT}${server.graphqlPath}`);
-  });
+  return app;
 }
 
-startServer();
-
+// For Vercel serverless
+if (require.main === module) {
+  // Running as standalone server
+  const PORT = process.env.PORT || 5001;
+  startServer().then(app => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`GraphQL endpoint: http://localhost:${PORT}${server.graphqlPath}`);
+      console.log(`GraphQL Playground: http://localhost:${PORT}${server.graphqlPath}`);
+    });
+  });
+} else {
+  // Running as Vercel serverless function
+  module.exports = startServer();
+}

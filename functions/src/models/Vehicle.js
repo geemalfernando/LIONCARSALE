@@ -60,7 +60,7 @@ const vehicleSchema = new mongoose.Schema({
     default: 'Manual'
   }
 }, {
-  timestamps: true, // Automatically adds createdAt and updatedAt
+  timestamps: true,
   toJSON: {
     transform: function(doc, ret) {
       ret.id = ret._id.toString();
@@ -164,16 +164,13 @@ vehicleSchema.statics.getDistinctMakes = async function() {
 vehicleSchema.statics.getDistinctYears = async function() {
   try {
     const years = await this.distinct('year');
-    return years.sort((a, b) => b - a); // Descending order
+    return years.sort((a, b) => b - a);
   } catch (error) {
     throw new Error(`Error fetching years: ${error.message}`);
   }
 };
 
-// Note: Mongoose already provides countDocuments as a native method
-// We can use Vehicle.countDocuments({}) directly or Vehicle.countDocuments(query)
-// For filtered counts with search, use the query builder pattern
-
 const Vehicle = mongoose.model('Vehicle', vehicleSchema);
 
 module.exports = Vehicle;
+

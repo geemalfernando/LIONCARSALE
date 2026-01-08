@@ -13,7 +13,11 @@ const PhotoGallery = ({ images, title }) => {
     }
     // If it's a local path starting with /uploads, prepend backend URL
     if (image.startsWith('/uploads')) {
-      return `http://localhost:5001${image}`;
+      // In production, images should be full URLs already or stored in Firebase Storage
+      // For development, use localhost
+      const backendUrl = process.env.REACT_APP_API_URL || 
+        (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5001');
+      return `${backendUrl}${image}`;
     }
     // Otherwise return as is
     return image;

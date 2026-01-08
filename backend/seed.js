@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { initializeDatabase, pool } = require('./config/database');
+const { initializeDatabase, mongoose } = require('./config/database');
 const Vehicle = require('./models/Vehicle');
 
 const sampleVehicles = [
@@ -128,14 +128,14 @@ const sampleVehicles = [
 
 async function seedDatabase() {
   try {
-    console.log('🌱 Seeding PostgreSQL database...\n');
+    console.log('🌱 Seeding MongoDB database...\n');
     
-    // Initialize database (create tables if needed)
+    // Initialize database (connect to MongoDB)
     await initializeDatabase();
     console.log('✅ Database initialized\n');
 
     // Clear existing vehicles
-    await pool.query('DELETE FROM vehicles');
+    await Vehicle.deleteMany({});
     console.log('🧹 Cleared existing vehicles\n');
 
     // Insert sample vehicles
@@ -146,16 +146,16 @@ async function seedDatabase() {
     console.log(`✅ Inserted ${sampleVehicles.length} vehicles\n`);
 
     // Verify
-    const count = await Vehicle.countDocuments();
+    const count = await Vehicle.countDocuments({});
     console.log(`📊 Total vehicles in database: ${count}`);
     console.log('\n🎉 Database seeded successfully!');
     
-    await pool.end();
+    await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
     console.error('❌ Error seeding database:', error.message);
     console.error(error);
-    await pool.end();
+    await mongoose.connection.close().catch(() => {});
     process.exit(1);
   }
 }
