@@ -41,10 +41,11 @@ app.get('/', (req, res) => {
 // Apollo Server and database initialization (lazy loaded)
 let apolloServer = null;
 let initializationPromise = null;
+let apolloInitialized = false;
 
 async function initializeApolloServer() {
   // If already initialized, return
-  if (apolloServer) {
+  if (apolloServer && apolloInitialized) {
     return apolloServer;
   }
 
@@ -87,7 +88,11 @@ async function initializeApolloServer() {
       });
 
       await apolloServer.start();
+      
+      // Apply middleware to Express app (apollo-server-express uses applyMiddleware)
+      // This sets up the /graphql route handler automatically
       apolloServer.applyMiddleware({ app, path: '/graphql' });
+      apolloInitialized = true;
       
       console.log('✅ Apollo Server started');
       return apolloServer;
@@ -95,6 +100,7 @@ async function initializeApolloServer() {
       console.error('❌ Apollo Server initialization error:', err.message);
       console.error('Stack:', err.stack);
       initializationPromise = null;
+      apolloInitialized = false;
       throw err;
     }
   })();
@@ -102,27 +108,9 @@ async function initializeApolloServer() {
   return initializationPromise;
 }
 
-// GraphQL endpoint - lazy load Apollo Server
-app.all('/graphql', async (req, res, next) => {
-  try {
-    await initializeApolloServer();
-    // Use Apollo Server handler
-    return apolloServer.createHandler({ 
-      path: '/graphql',
-      disableHealthCheck: true,
-      bodyParserConfig: false
-    })(req, res);
-  } catch (error) {
-    console.error('GraphQL initialization error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        status: 'ERROR',
-        message: 'GraphQL server not available',
-        error: error.message
-      });
-    }
-  }
-});
+// GraphQL endpoint will be handled by Apollo Server middleware
+// We need to ensure Apollo Server is initialized before Express handles the route
+// Since applyMiddleware is called during initialization, the route is already set up
 
 // File upload routes (lazy load)
 app.use('/api/upload', async (req, res, next) => {
@@ -159,6 +147,22 @@ app.use((err, req, res, next) => {
 // Vercel serverless function handler
 module.exports = async (req, res) => {
   try {
+    // Initialize Apollo Server if not already done (for /graphql routes)
+    if (req.url === '/graphql' || req.url.startsWith('/graphql')) {
+      try {
+        await initializeApolloServer();
+      } catch (initError) {
+        console.error('Apollo Server init error:', initError.message);
+        if (!res.headersSent) {
+          return res.status(500).json({
+            status: 'ERROR',
+            message: 'GraphQL server not available',
+            error: initError.message
+          });
+        }
+      }
+    }
+    
     // Handle the request with Express
     return app(req, res);
   } catch (error) {
