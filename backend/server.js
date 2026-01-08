@@ -76,6 +76,18 @@ async function startServer() {
     });
   });
 
+  // Root route
+  app.get('/', (req, res) => {
+    res.json({ 
+      status: 'OK', 
+      message: 'Lion Car Sale API Server',
+      endpoints: {
+        graphql: `${req.protocol}://${req.get('host')}/graphql`,
+        health: `${req.protocol}://${req.get('host')}/api/health`
+      }
+    });
+  });
+
   return app;
 }
 
