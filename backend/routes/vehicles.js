@@ -72,10 +72,12 @@ router.get('/', async (req, res) => {
       count: vehicles.length
     });
   } catch (error) {
-    console.error('Error fetching vehicles:', error);
+    console.error('❌ Error fetching vehicles:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       status: 'ERROR',
-      message: error.message || 'Failed to fetch vehicles'
+      message: error.message || 'Failed to fetch vehicles',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -93,10 +95,12 @@ router.get('/filters/makes', async (req, res) => {
       data: makes
     });
   } catch (error) {
-    console.error('Error fetching makes:', error);
+    console.error('❌ Error fetching makes:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       status: 'ERROR',
-      message: error.message || 'Failed to fetch makes'
+      message: error.message || 'Failed to fetch makes',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -113,10 +117,12 @@ router.get('/filters/years', async (req, res) => {
       data: years
     });
   } catch (error) {
-    console.error('Error fetching years:', error);
+    console.error('❌ Error fetching years:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       status: 'ERROR',
-      message: error.message || 'Failed to fetch years'
+      message: error.message || 'Failed to fetch years',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
