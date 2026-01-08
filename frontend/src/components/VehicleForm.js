@@ -45,6 +45,16 @@ const VehicleForm = ({ onSubmit }) => {
     }));
   };
 
+  // Convert file to base64 data URL (for small images)
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleFileUpload = async (index, file) => {
     if (!file) return;
 
@@ -55,65 +65,71 @@ const VehicleForm = ({ onSubmit }) => {
       return;
     }
 
-    // Validate file size (10MB)
+    // Validate file size (5MB for base64, 10MB for server upload)
     if (file.size > 10 * 1024 * 1024) {
       alert('File size must be less than 10MB');
       return;
     }
 
     setUploading(true);
-    setUploadProgress(prev => ({ ...prev, [index]: 'Uploading...' }));
+    setUploadProgress(prev => ({ ...prev, [index]: 'Processing...' }));
 
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // Use environment variable or default to Vercel backend in production
+      // Option 1: Try server upload first (for development)
       const backendUrl = process.env.REACT_APP_API_URL || 
         (process.env.NODE_ENV === 'production' 
           ? 'https://lioncarsa.vercel.app' 
           : 'http://localhost:5001');
       
-      console.log('Uploading to:', `${backendUrl}/api/upload/single`);
+      // For small images (< 2MB), use base64 (works everywhere)
+      if (file.size < 2 * 1024 * 1024) {
+        setUploadProgress(prev => ({ ...prev, [index]: 'Converting to base64...' }));
+        const base64Image = await convertToBase64(file);
+        handleImageChange(index, base64Image);
+        setUploadProgress(prev => ({ ...prev, [index]: 'Uploaded ✓ (Base64)' }));
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[index];
+            return newProgress;
+          });
+        }, 2000);
+        setUploading(false);
+        return;
+      }
+
+      // Option 2: Try server upload (may not work in Vercel)
+      setUploadProgress(prev => ({ ...prev, [index]: 'Uploading to server...' }));
+      
+      const formData = new FormData();
+      formData.append('image', file);
       
       const response = await fetch(`${backendUrl}/api/upload/single`, {
         method: 'POST',
         body: formData
       });
 
-      console.log('Upload response status:', response.status);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText || 'Upload failed' };
-        }
-        throw new Error(errorData.error || errorData.message || `Upload failed: ${response.status} ${response.statusText}`);
+        // Server upload failed, fall back to base64
+        throw new Error('Server upload not available');
       }
 
       const data = await response.json();
-      console.log('Upload response data:', data);
       
       if (!data.success && !data.url && !data.filename) {
-        throw new Error(data.error || 'Invalid response from server');
+        throw new Error('Server upload failed');
       }
       
       // Check if response has url or filename
       let imageUrl;
       if (data.url) {
-        // If URL is already complete (starts with http), use it as is
-        // Otherwise, prepend backend URL
         imageUrl = data.url.startsWith('http') ? data.url : `${backendUrl}${data.url}`;
       } else if (data.filename) {
         imageUrl = `${backendUrl}/uploads/${data.filename}`;
       } else {
-        throw new Error('Invalid response from server - no URL or filename');
+        throw new Error('Invalid response from server');
       }
       
-      console.log('Final image URL:', imageUrl);
       handleImageChange(index, imageUrl);
       setUploadProgress(prev => ({ ...prev, [index]: 'Uploaded ✓' }));
       
@@ -125,17 +141,42 @@ const VehicleForm = ({ onSubmit }) => {
         });
       }, 2000);
     } catch (error) {
-      console.error('Upload error:', error);
-      console.error('Error details:', error.message);
-      alert(`Failed to upload image: ${error.message}\n\nTip: You can also paste an image URL directly.`);
-      setUploadProgress(prev => ({ ...prev, [index]: 'Failed ❌' }));
-      setTimeout(() => {
-        setUploadProgress(prev => {
-          const newProgress = { ...prev };
-          delete newProgress[index];
-          return newProgress;
-        });
-      }, 3000);
+      // Fallback: Convert to base64 for images < 5MB
+      if (file.size < 5 * 1024 * 1024) {
+        try {
+          setUploadProgress(prev => ({ ...prev, [index]: 'Converting to base64...' }));
+          const base64Image = await convertToBase64(file);
+          handleImageChange(index, base64Image);
+          setUploadProgress(prev => ({ ...prev, [index]: 'Uploaded ✓ (Base64)' }));
+          setTimeout(() => {
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[index];
+              return newProgress;
+            });
+          }, 2000);
+        } catch (base64Error) {
+          alert(`Failed to process image. Please use an image URL instead.\n\nTip: Upload to Imgur (imgur.com) and paste the URL.`);
+          setUploadProgress(prev => ({ ...prev, [index]: 'Failed ❌' }));
+          setTimeout(() => {
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[index];
+              return newProgress;
+            });
+          }, 3000);
+        }
+      } else {
+        alert(`File too large for base64. Please:\n1. Upload to Imgur (imgur.com)\n2. Copy the image URL\n3. Paste it in the URL field\n\nOr compress the image to under 5MB.`);
+        setUploadProgress(prev => ({ ...prev, [index]: 'Failed ❌' }));
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[index];
+            return newProgress;
+          });
+        }, 3000);
+      }
     } finally {
       setUploading(false);
     }
@@ -396,9 +437,16 @@ const VehicleForm = ({ onSubmit }) => {
 
       <div className="form-section">
         <h2>Vehicle Photos</h2>
-        <p className="form-help-text">
-          Upload local photos or enter image URLs. <strong>Note:</strong> File uploads may not work in production (use image URLs from image hosting services like Imgur, Google Photos, etc.)
-        </p>
+        <div className="form-help-box">
+          <p className="form-help-text">
+            <strong>📸 How to Add Images:</strong>
+          </p>
+          <ol className="form-help-list">
+            <li><strong>Option 1 (Recommended):</strong> Upload to <a href="https://imgur.com" target="_blank" rel="noopener noreferrer">Imgur.com</a> → Right-click image → "Copy image address" → Paste URL below</li>
+            <li><strong>Option 2:</strong> Upload file directly (works for images under 2MB - converts to base64)</li>
+            <li><strong>Option 3:</strong> Use any image URL from Google Photos, Dropbox, or other hosting services</li>
+          </ol>
+        </div>
         
         {formData.images.map((image, index) => (
           <div key={index} className="image-input-group">

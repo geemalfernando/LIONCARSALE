@@ -7,20 +7,27 @@ const PhotoGallery = ({ images, title, sold }) => {
   // Helper function to get full image URL
   const getImageUrl = (image) => {
     if (!image) return '';
-    // If it's already a full URL (http/https), return as is
+    
+    // Base64 images (data:image/...)
+    if (image.startsWith('data:')) {
+      return image;
+    }
+    
+    // Full URLs (http/https)
     if (image.startsWith('http://') || image.startsWith('https://')) {
       return image;
     }
-    // If it's a local path starting with /uploads, prepend backend URL
+    
+    // Local paths starting with /uploads - prepend backend URL
     if (image.startsWith('/uploads')) {
-      // Use environment variable or default to Vercel backend in production
       const backendUrl = process.env.REACT_APP_API_URL || 
         (process.env.NODE_ENV === 'production' 
           ? 'https://lioncarsa.vercel.app' 
           : 'http://localhost:5001');
       return `${backendUrl}${image}`;
     }
-    // Otherwise return as is
+    
+    // Otherwise return as is (might be a relative path or invalid)
     return image;
   };
 

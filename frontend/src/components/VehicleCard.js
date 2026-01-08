@@ -27,16 +27,19 @@ const VehicleCard = ({ vehicle }) => {
         {vehicle.images && vehicle.images.length > 0 ? (
           <>
             <img
-              src={vehicle.images[0].startsWith('http') 
+              src={vehicle.images[0].startsWith('data:') || vehicle.images[0].startsWith('http')
                 ? vehicle.images[0] 
-                : `${process.env.REACT_APP_API_URL || 
-                     (process.env.NODE_ENV === 'production' 
-                       ? 'https://lioncarsa.vercel.app' 
-                       : 'http://localhost:5001')}${vehicle.images[0]}`}
+                : vehicle.images[0].startsWith('/uploads')
+                  ? `${process.env.REACT_APP_API_URL || 
+                       (process.env.NODE_ENV === 'production' 
+                         ? 'https://lioncarsa.vercel.app' 
+                         : 'http://localhost:5001')}${vehicle.images[0]}`
+                  : vehicle.images[0]}
               alt={vehicle.title}
               className={`vehicle-image ${vehicle.sold ? 'sold-image' : ''}`}
               onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+                console.error('Image load error:', vehicle.images[0]);
+                e.target.src = 'https://via.placeholder.com/400x300?text=Image+Not+Available';
               }}
             />
             {vehicle.sold && (

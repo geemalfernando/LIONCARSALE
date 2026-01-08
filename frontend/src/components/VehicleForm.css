@@ -30,6 +30,41 @@
   font-style: italic;
 }
 
+.form-help-box {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-help-box .form-help-text {
+  margin-bottom: 0.75rem;
+  font-style: normal;
+}
+
+.form-help-list {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #555;
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.form-help-list li {
+  margin-bottom: 0.5rem;
+}
+
+.form-help-list a {
+  color: #DC143C;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.form-help-list a:hover {
+  text-decoration: underline;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
