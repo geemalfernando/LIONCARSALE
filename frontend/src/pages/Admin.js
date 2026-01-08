@@ -15,6 +15,7 @@ function Admin() {
   const [activeTab, setActiveTab] = useState('add'); // 'add' or 'manage'
   const [vehicles, setVehicles] = useState([]);
   const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null); // Track which vehicle is being updated
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -83,23 +84,36 @@ function Admin() {
   }, [isAuthenticated, activeTab]);
 
   // Toggle sold status
-  const toggleSoldStatus = async (vehicleId, currentStatus) => {
+  const toggleSoldStatus = async (vehicleId, currentStatus, vehicleTitle) => {
+    // Confirm action
+    const action = currentStatus ? 'mark as available' : 'mark as sold';
+    const confirmMessage = currentStatus 
+      ? `Mark "${vehicleTitle}" as AVAILABLE?` 
+      : `Mark "${vehicleTitle}" as SOLD?`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return; // User cancelled
+    }
+    
     try {
       setSuccessMessage('');
       setErrorMessage('');
+      setUpdatingId(vehicleId); // Show loading state
       
       await vehiclesAPI.update(vehicleId, { sold: !currentStatus });
       
-      setSuccessMessage(`Vehicle ${!currentStatus ? 'marked as sold' : 'marked as available'} successfully!`);
+      setSuccessMessage(`✅ Vehicle "${vehicleTitle}" ${action} successfully!`);
       
       // Refresh vehicle list
-      fetchVehicles();
+      await fetchVehicles();
       
+      setUpdatingId(null);
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to update vehicle status.');
+      setUpdatingId(null);
+      setErrorMessage(error.message || 'Failed to update vehicle status. Please try again.');
       console.error('Error updating vehicle:', error);
     }
   };
@@ -247,9 +261,14 @@ function Admin() {
                           <td>
                             <button
                               className={`toggle-sold-btn ${vehicle.sold ? 'mark-available' : 'mark-sold'}`}
-                              onClick={() => toggleSoldStatus(vehicle._id || vehicle.id, vehicle.sold)}
+                              onClick={() => toggleSoldStatus(vehicle._id || vehicle.id, vehicle.sold, vehicle.title)}
+                              disabled={updatingId === (vehicle._id || vehicle.id)}
                             >
-                              {vehicle.sold ? 'Mark Available' : 'Mark Sold'}
+                              {updatingId === (vehicle._id || vehicle.id) 
+                                ? 'Saving...' 
+                                : vehicle.sold 
+                                  ? '✓ Mark Available' 
+                                  : '✓ Mark Sold'}
                             </button>
                           </td>
                         </tr>

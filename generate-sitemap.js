@@ -22,7 +22,39 @@ https.get(`${backendUrl}/api/vehicles`, (res) => {
       const response = JSON.parse(data);
       
       if (response.status !== 'OK') {
-        throw new Error('Failed to fetch vehicles from backend');
+        console.error('⚠️  Backend returned error:', response.message || 'Unknown error');
+        console.error('⚠️  Response:', data.substring(0, 200));
+        console.log('\n💡 Trying alternative: Creating sitemap with homepage only...');
+        console.log('💡 You can manually add vehicle URLs later or fix the backend connection.');
+        
+        // Create basic sitemap with just homepage
+        const currentDate = new Date().toISOString().split('T')[0];
+        const basicSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>${baseUrl}/</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+</urlset>`;
+
+        const dir = path.dirname(outputFile);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        fs.writeFileSync(outputFile, basicSitemap);
+        console.log(`✅ Basic sitemap created (homepage only)`);
+        console.log(`   File: ${outputFile}`);
+        console.log(`   ⚠️  Add vehicle URLs manually or fix backend connection and regenerate`);
+        process.exit(0);
       }
       
       const vehicles = response.data || [];
@@ -75,14 +107,68 @@ ${vehicles.map(vehicle => {
       console.log(`   2. Deploy: firebase deploy --only hosting`);
       console.log(`   3. Submit to Google: https://auditra-web.web.app/sitemap.xml`);
     } catch (error) {
-      console.error('❌ Error generating sitemap:', error.message);
-      console.error('   Response:', data.substring(0, 200));
-      process.exit(1);
+      console.error('❌ Error parsing response:', error.message);
+      console.error('   Response:', data.substring(0, 300));
+      
+      // Check if existing sitemap exists
+      if (fs.existsSync(outputFile)) {
+        console.log('\n💡 Using existing sitemap file...');
+        console.log(`   Existing file: ${outputFile}`);
+        console.log('   ⚠️  If backend is fixed, regenerate with: node generate-sitemap.js');
+        process.exit(0);
+      } else {
+        console.log('\n💡 Creating minimal sitemap (homepage only)...');
+        const currentDate = new Date().toISOString().split('T')[0];
+        const minimalSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+        
+        const dir = path.dirname(outputFile);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(outputFile, minimalSitemap);
+        console.log(`✅ Minimal sitemap created`);
+        process.exit(0);
+      }
     }
   });
 }).on('error', (error) => {
-  console.error('❌ Error fetching vehicles from backend:', error.message);
-  console.error('   Make sure your backend is running at:', backendUrl);
-  process.exit(1);
+  console.error('❌ Error connecting to backend:', error.message);
+  console.error('   Backend URL:', backendUrl);
+  
+  // Check if existing sitemap exists
+  if (fs.existsSync(outputFile)) {
+    console.log('\n💡 Using existing sitemap file...');
+    console.log(`   Existing file: ${outputFile}`);
+    console.log('   ⚠️  Fix backend connection and regenerate when ready');
+    process.exit(0);
+  } else {
+    console.log('\n💡 Creating minimal sitemap (homepage only)...');
+    const currentDate = new Date().toISOString().split('T')[0];
+    const minimalSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}/</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+    
+    const dir = path.dirname(outputFile);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(outputFile, minimalSitemap);
+    console.log(`✅ Minimal sitemap created`);
+    process.exit(0);
+  }
 });
 
