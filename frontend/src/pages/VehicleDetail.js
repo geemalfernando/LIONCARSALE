@@ -124,8 +124,31 @@ function VehicleDetail() {
               </div>
             )}
 
+            {vehicle.sellerPhone && (
+              <div className="seller-phone-section">
+                <div className="spec-item-detail">
+                  <span className="spec-label">📞 Seller Phone</span>
+                  <span className="spec-value">{vehicle.sellerPhone}</span>
+                </div>
+              </div>
+            )}
+
             <div className="vehicle-actions">
-              <button className="contact-btn">Contact Seller</button>
+              <button 
+                className="contact-btn" 
+                onClick={() => {
+                  if (vehicle.sellerPhone) {
+                    // Show phone number in alert
+                    alert(`Seller Phone Number:\n${vehicle.sellerPhone}\n\nClick OK to call or copy the number.`);
+                    // Try to open phone dialer on mobile devices
+                    window.location.href = `tel:${vehicle.sellerPhone.replace(/[^\d+]/g, '')}`;
+                  } else {
+                    alert('Seller phone number is not available.');
+                  }
+                }}
+              >
+                📞 Contact Seller
+              </button>
               <button className="favorite-btn">❤️ Save</button>
             </div>
           </div>

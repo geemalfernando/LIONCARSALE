@@ -13,6 +13,7 @@ const VehicleForm = ({ onSubmit }) => {
     color: '',
     fuelType: 'Petrol',
     transmission: 'Manual',
+    sellerPhone: '',
     images: ['']
   });
 
@@ -72,18 +73,47 @@ const VehicleForm = ({ onSubmit }) => {
         (process.env.NODE_ENV === 'production' 
           ? 'https://lioncarsa.vercel.app' 
           : 'http://localhost:5001');
+      
+      console.log('Uploading to:', `${backendUrl}/api/upload/single`);
+      
       const response = await fetch(`${backendUrl}/api/upload/single`, {
         method: 'POST',
         body: formData
       });
 
+      console.log('Upload response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || 'Upload failed' };
+        }
+        throw new Error(errorData.error || errorData.message || `Upload failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      const imageUrl = `${backendUrl}${data.url}`;
+      console.log('Upload response data:', data);
       
+      if (!data.success && !data.url && !data.filename) {
+        throw new Error(data.error || 'Invalid response from server');
+      }
+      
+      // Check if response has url or filename
+      let imageUrl;
+      if (data.url) {
+        // If URL is already complete (starts with http), use it as is
+        // Otherwise, prepend backend URL
+        imageUrl = data.url.startsWith('http') ? data.url : `${backendUrl}${data.url}`;
+      } else if (data.filename) {
+        imageUrl = `${backendUrl}/uploads/${data.filename}`;
+      } else {
+        throw new Error('Invalid response from server - no URL or filename');
+      }
+      
+      console.log('Final image URL:', imageUrl);
       handleImageChange(index, imageUrl);
       setUploadProgress(prev => ({ ...prev, [index]: 'Uploaded ✓' }));
       
@@ -96,8 +126,16 @@ const VehicleForm = ({ onSubmit }) => {
       }, 2000);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload image. Please try again.');
-      setUploadProgress(prev => ({ ...prev, [index]: 'Failed' }));
+      console.error('Error details:', error.message);
+      alert(`Failed to upload image: ${error.message}\n\nTip: You can also paste an image URL directly.`);
+      setUploadProgress(prev => ({ ...prev, [index]: 'Failed ❌' }));
+      setTimeout(() => {
+        setUploadProgress(prev => {
+          const newProgress = { ...prev };
+          delete newProgress[index];
+          return newProgress;
+        });
+      }, 3000);
     } finally {
       setUploading(false);
     }
@@ -138,6 +176,9 @@ const VehicleForm = ({ onSubmit }) => {
     if (!formData.price || formData.price <= 0) {
       newErrors.price = 'Valid price is required';
     }
+    if (!formData.sellerPhone || !formData.sellerPhone.trim()) {
+      newErrors.sellerPhone = 'Seller phone number is required';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -175,6 +216,7 @@ const VehicleForm = ({ onSubmit }) => {
       color: '',
       fuelType: 'Petrol',
       transmission: 'Manual',
+      sellerPhone: '',
       images: ['']
     });
   };
@@ -335,12 +377,27 @@ const VehicleForm = ({ onSubmit }) => {
             placeholder="Enter vehicle description..."
           />
         </div>
+
+        <div className="form-group">
+          <label htmlFor="sellerPhone">Seller Phone Number *</label>
+          <input
+            type="tel"
+            id="sellerPhone"
+            name="sellerPhone"
+            value={formData.sellerPhone}
+            onChange={handleChange}
+            placeholder="+1 234 567 8900"
+            required
+            className={errors.sellerPhone ? 'error' : ''}
+          />
+          {errors.sellerPhone && <span className="error-text">{errors.sellerPhone}</span>}
+        </div>
       </div>
 
       <div className="form-section">
         <h2>Vehicle Photos</h2>
         <p className="form-help-text">
-          Upload local photos or enter image URLs
+          Upload local photos or enter image URLs. <strong>Note:</strong> File uploads may not work in production (use image URLs from image hosting services like Imgur, Google Photos, etc.)
         </p>
         
         {formData.images.map((image, index) => (
@@ -396,18 +453,20 @@ const VehicleForm = ({ onSubmit }) => {
                 </button>
               )}
               
-              {image && (
+              {image && image.trim() && (
                 <div className="image-preview">
                   <img
                     src={image}
                     alt={`Preview ${index + 1}`}
                     onError={(e) => {
+                      console.error('Image preview error:', image);
                       e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'block';
+                      const errorDiv = e.target.parentElement.querySelector('.image-error');
+                      if (errorDiv) errorDiv.style.display = 'block';
                     }}
                   />
-                  <div className="image-error" style={{ display: 'none' }}>
-                    Invalid image URL
+                  <div className="image-error" style={{ display: 'none', color: 'red', padding: '5px' }}>
+                    ⚠️ Invalid image URL - Please check the URL
                   </div>
                 </div>
               )}

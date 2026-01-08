@@ -5,10 +5,22 @@ const fs = require('fs');
 
 const router = express.Router();
 
+// For Vercel serverless, use /tmp directory (only writable location)
+// Note: Files in /tmp are temporary and will be deleted after function execution
+const isVercel = process.env.VERCEL || process.env.NOW_REGION;
+const uploadsDir = isVercel 
+  ? path.join('/tmp', 'uploads')
+  : path.join(__dirname, '../uploads');
+
 // Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('⚠️  Warning: Could not create uploads directory:', error.message);
+  console.error('⚠️  File uploads may not work in serverless environment.');
+  console.error('⚠️  Consider using image URLs instead or cloud storage (e.g., Cloudinary, AWS S3)');
 }
 
 // Configure multer for file uploads
@@ -50,17 +62,30 @@ const upload = multer({
 router.post('/single', upload.single('image'), (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'No file uploaded. Please select an image file.' 
+      });
     }
 
     const fileUrl = `/uploads/${req.file.filename}`;
+    
+    console.log('✅ File uploaded successfully:', req.file.filename);
+    console.log('📁 File saved to:', req.file.path);
+    
     res.json({
       success: true,
       url: fileUrl,
-      filename: req.file.filename
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('❌ Upload error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'File upload failed' 
+    });
   }
 });
 
