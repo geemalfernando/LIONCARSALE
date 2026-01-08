@@ -39,6 +39,13 @@ function getDatabaseUrl() {
     url = `${baseUrl}/lion_car_sale${queryString}`;
   }
   
+  // mongodb+srv:// URLs automatically use TLS, no need to add it explicitly
+  // Just ensure retryWrites and w are set if not present
+  if (!url.includes('retryWrites=')) {
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}retryWrites=true&w=majority`;
+  }
+  
   return url;
 }
 
