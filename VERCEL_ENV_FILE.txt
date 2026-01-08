@@ -1,0 +1,11 @@
+# Vercel Environment Variables
+# Copy these to Vercel Dashboard → Settings → Environment Variables
+# 
+# Note: Vercel doesn't use .env files - add these in the dashboard instead
+
+DATABASE_URL=mongodb+srv://geemal:Fernando1976@geemal.z9d7ccy.mongodb.net/lion_car_sale?appName=geemal
+
+NODE_ENV=production
+
+FRONTEND_URL=https://auditra-web.web.app
+

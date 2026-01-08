@@ -12,7 +12,6 @@ const mongooseOptions = {
   w: 'majority',
   // Disable buffering - fail immediately if not connected
   bufferCommands: false,
-  bufferMaxEntries: 0,
 };
 
 let isConnected = false;
