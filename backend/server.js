@@ -80,8 +80,23 @@ async function startServer() {
 }
 
 // For Vercel serverless
+let appInstance = null;
+
+async function getApp() {
+  if (!appInstance) {
+    appInstance = await startServer();
+  }
+  return appInstance;
+}
+
+// Export for Vercel
+module.exports = async (req, res) => {
+  const app = await getApp();
+  return app(req, res);
+};
+
+// For standalone server
 if (require.main === module) {
-  // Running as standalone server
   const PORT = process.env.PORT || 5001;
   startServer().then(app => {
     app.listen(PORT, () => {
@@ -90,7 +105,4 @@ if (require.main === module) {
       console.log(`GraphQL Playground: http://localhost:${PORT}${server.graphqlPath}`);
     });
   });
-} else {
-  // Running as Vercel serverless function
-  module.exports = startServer();
 }
