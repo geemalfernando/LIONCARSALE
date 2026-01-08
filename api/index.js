@@ -13,108 +13,136 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Simple health check (works immediately, no initialization needed)
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Lion Car Sale API is running',
-    database: 'MongoDB',
-    timestamp: new Date().toISOString()
-  });
+// Simple health check
+app.get('/api/health', async (req, res) => {
+  try {
+    await initializeDatabase();
+    const { mongoose } = require('../backend/config/database');
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    
+    res.json({ 
+      status: 'OK', 
+      message: 'Lion Car Sale API is running',
+      api: 'REST API',
+      database: 'MongoDB',
+      dbStatus: dbStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.json({ 
+      status: 'WARNING', 
+      message: 'Lion Car Sale API is running but database connection failed',
+      api: 'REST API',
+      database: 'MongoDB',
+      dbStatus: 'disconnected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Root route
 app.get('/', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'Lion Car Sale API Server',
+    message: 'Lion Car Sale API Server (REST API)',
     endpoints: {
-      graphql: `${req.protocol}://${req.get('host')}/graphql`,
+      vehicles: `${req.protocol}://${req.get('host')}/api/vehicles`,
+      vehicle: `${req.protocol}://${req.get('host')}/api/vehicles/:id`,
+      makes: `${req.protocol}://${req.get('host')}/api/vehicles/filters/makes`,
+      years: `${req.protocol}://${req.get('host')}/api/vehicles/filters/years`,
+      upload: `${req.protocol}://${req.get('host')}/api/upload/single`,
       health: `${req.protocol}://${req.get('host')}/api/health`
     }
   });
 });
 
-// Apollo Server and database initialization (lazy loaded)
-let apolloServer = null;
-let initializationPromise = null;
-let apolloInitialized = false;
+// Database initialization (lazy loaded)
+let dbInitialized = false;
+let dbInitializationPromise = null;
 
-async function initializeApolloServer() {
+async function initializeDatabase() {
   // If already initialized, return
-  if (apolloServer && apolloInitialized) {
-    return apolloServer;
+  if (dbInitialized) {
+    return;
   }
 
   // If initialization in progress, wait
-  if (initializationPromise) {
-    return initializationPromise;
+  if (dbInitializationPromise) {
+    return dbInitializationPromise;
   }
 
   // Start initialization
-  initializationPromise = (async () => {
+  dbInitializationPromise = (async () => {
     try {
-      console.log('🔌 Initializing Apollo Server and database...');
+      console.log('🔌 Initializing database connection...');
 
       // Import dependencies (lazy load)
-      const { ApolloServer } = require('apollo-server-express');
-      const { initializeDatabase, mongoose } = require('../backend/config/database');
-      const typeDefs = require('../backend/graphql/schema');
-      const resolvers = require('../backend/graphql/resolvers');
+      const { initializeDatabase: initDB, mongoose } = require('../backend/config/database');
 
       // Connect to database
       try {
         if (mongoose.connection.readyState !== 1) {
-          await initializeDatabase();
+          console.log('⏳ Connecting to MongoDB...');
+          await initDB();
+          
+          // Verify connection is ready
+          if (mongoose.connection.readyState !== 1) {
+            throw new Error('Database connection not ready after initialization');
+          }
+          
           console.log('✅ MongoDB database ready');
+          console.log('Connection state:', mongoose.connection.readyState);
+        } else {
+          console.log('✅ MongoDB already connected');
         }
+        
+        dbInitialized = true;
       } catch (dbError) {
-        console.error('⚠️  Database connection failed:', dbError.message);
-        // Continue - GraphQL queries will fail but API won't crash
+        console.error('❌ Database connection failed:', dbError.message);
+        console.error('Stack:', dbError.stack);
+        dbInitialized = false;
+        // In serverless, allow graceful degradation - routes will handle errors
+        console.error('⚠️  Continuing without database - routes will handle errors');
       }
-
-      // Create and start Apollo Server
-      apolloServer = new ApolloServer({
-        typeDefs,
-        resolvers,
-        introspection: true,
-        playground: true,
-        context: ({ req }) => {
-          return { req };
-        },
-      });
-
-      await apolloServer.start();
-      
-      // Apply middleware to Express app (apollo-server-express uses applyMiddleware)
-      // This sets up the /graphql route handler automatically
-      apolloServer.applyMiddleware({ app, path: '/graphql' });
-      apolloInitialized = true;
-      
-      console.log('✅ Apollo Server started');
-      return apolloServer;
     } catch (err) {
-      console.error('❌ Apollo Server initialization error:', err.message);
+      console.error('❌ Database initialization error:', err.message);
       console.error('Stack:', err.stack);
-      initializationPromise = null;
-      apolloInitialized = false;
-      throw err;
+      dbInitializationPromise = null;
+      dbInitialized = false;
     }
   })();
 
-  return initializationPromise;
+  return dbInitializationPromise;
 }
 
-// GraphQL endpoint will be handled by Apollo Server middleware
-// We need to ensure Apollo Server is initialized before Express handles the route
-// Since applyMiddleware is called during initialization, the route is already set up
+// REST API Routes - Direct MongoDB connection
+app.use('/api/vehicles', async (req, res, next) => {
+  try {
+    // Initialize database if needed
+    await initializeDatabase();
+    // Load and use vehicles router
+    const vehiclesRouter = require('../backend/routes/vehicles');
+    return vehiclesRouter(req, res, next);
+  } catch (error) {
+    console.error('Vehicles route error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        status: 'ERROR',
+        message: 'Vehicles service not available',
+        error: error.message
+      });
+    }
+  }
+});
 
 // File upload routes (lazy load)
 app.use('/api/upload', async (req, res, next) => {
   try {
+    await initializeDatabase();
     const uploadRouter = require('../backend/routes/upload');
     return uploadRouter(req, res, next);
   } catch (error) {
@@ -147,21 +175,8 @@ app.use((err, req, res, next) => {
 // Vercel serverless function handler
 module.exports = async (req, res) => {
   try {
-    // Initialize Apollo Server if not already done (for /graphql routes)
-    if (req.url === '/graphql' || req.url.startsWith('/graphql')) {
-      try {
-        await initializeApolloServer();
-      } catch (initError) {
-        console.error('Apollo Server init error:', initError.message);
-        if (!res.headersSent) {
-          return res.status(500).json({
-            status: 'ERROR',
-            message: 'GraphQL server not available',
-            error: initError.message
-          });
-        }
-      }
-    }
+    // Initialize database connection (lazy, only once)
+    await initializeDatabase();
     
     // Handle the request with Express
     return app(req, res);
